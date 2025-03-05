@@ -27,6 +27,8 @@ from holoscan.operators import (
     VideoStreamReplayerOp,
 )
 from holoscan.resources import UnboundedAllocator
+from transformers import AutoTokenizer
+from utils import tokenize_captions
 
 coco_label_map = {
     0: "person",
@@ -112,6 +114,29 @@ coco_label_map = {
 }
 
 
+class CaptionPreprocessorOp(Operator):
+    def __init__(self, *args, tokenizer_model='bert-base-uncased', max_text_len=256, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_model)
+        self.max_text_len = max_text_len
+        self.cat_list = ['cat', 'dog']
+        self.caption = [" . ".join(self.cat_list) + ' .'] 
+
+    def setup(self, spec: OperatorSpec):
+        # spec.input("captions")
+        spec.output("out")
+
+    def compute(self, op_input, op_output, context):
+        # captions = op_input.receive("captions")
+        input_ids, attention_mask, position_ids, token_type_ids, text_self_attention_masks, pos_map = tokenize_captions(self.tokenizer, self.cat_list, self.caption, self.max_text_len)
+        
+        # op_output.emit(op_input["in", "source_video"])
+        op_output.emit(input_ids, "input_ids")
+        op_output.emit(attention_mask, "attention_mask")
+        op_output.emit(position_ids, "position_ids")
+        op_output.emit(token_type_ids, "token_type_ids")
+        op_output.emit(text_self_attention_masks, "text_self_attention_masks")
+        
 class DetectionPostprocessorOp(Operator):
     """Example of an operator post processing the tensor from inference component.
 
@@ -248,6 +273,15 @@ class YoloDetApp(Application):
             **self.kwargs("detection_preprocessor"),
         )
 
+         
+        caption_preprocessor = CaptionPreprocessorOp(
+            self,
+            name="caption_preprocessor",
+            tokenizer_model='bert-base-uncased',
+            max_text_len=512,
+            **self.kwargs("caption_preprocessor"),
+        )
+
         inference_kwargs = self.kwargs("detection_inference")
         for k, v in inference_kwargs["model_path_map"].items():
             inference_kwargs["model_path_map"][k] = os.path.join(self.data, v)
@@ -286,6 +320,7 @@ class YoloDetApp(Application):
         self.add_flow(source, detection_visualizer, {(source_output, "receivers")})
         self.add_flow(source, detection_preprocessor)
         self.add_flow(detection_preprocessor, detection_inference, {("", "receivers")})
+        self.add_flow(caption_preprocessor, detection_inference, {("", "receivers")})
         self.add_flow(detection_inference, detection_postprocessor, {("transmitter", "")})
         # Connect the postprocessor to the visualizer
         self.add_flow(detection_postprocessor, detection_visualizer, {("outputs", "receivers")})

@@ -32,17 +32,23 @@ detection_preprocessor:  # FormatConverter
     resize_width: 640
     resize_height: 640
 
+caption_preprocessor:
+
 detection_inference:  # TensorRtInference
   backend: "trt"
   pre_processor_map:
-    "yolo_det": ["source_video"]
+    "yolo_det": ["source_video",
+                  "input_ids",
+                  "attention_mask",
+                  "token_type_ids",
+                  "text_self_attention_masks"]
   inference_map:
     "yolo_det": ["inference_output_num_detections",
                  "inference_output_detection_boxes",
                  "inference_output_detection_scores",
                  "inference_output_detection_classes"]
   model_path_map:
-    "yolo_det": "yolov8s.onnx" # model file in data dir
+    "yolo_det": "grounding_dino_swin_tiny_commercial_deployable.onnx" # model file in data dir
 
 detection_postprocessor:  # Postprocessor
   label_text_size: 0.04
