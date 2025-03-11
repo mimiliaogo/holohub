@@ -56,3 +56,22 @@ detection_postprocessor:  # Postprocessor
 
 
 detection_visualizer:  # Holoviz
+
+grounding_dino:
+  labels:
+    - monitor
+    - lamp
+    - water bottle
+    - coffee mug
+  box_threshold: 0.4
+  text_threshold: 0.3
+  width: 640
+  height: 480
+  local_only: True
+  cache_dir: /workspace/holohub/data/synchron/grounding-dino-tiny
+
+grounding_dino_post_processor:
+
+
+app:
+  model_type: "nv_grounding_dino" # or "hugging_face_grounding_dino"
