@@ -16,63 +16,74 @@
 
 import numpy as np
 # from nvidia_tao_deploy.cv.deformable_detr.utils import sigmoid, box_cxcywh_to_xyxy
+def box_cxcywh_to_xyxy(x):
+    """Convert box from cxcywh to xyxy."""
+    x_c, y_c, w, h = x[..., 0], x[..., 1], x[..., 2], x[..., 3]
+    b = [(x_c - 0.5 * w), (y_c - 0.5 * h),
+         (x_c + 0.5 * w), (y_c + 0.5 * h)]
+    return np.stack(b, axis=-1)
 
 
-# def post_process(pred_logits, pred_boxes, target_sizes, pos_maps, num_select=300):
-#     """Perform the post-processing. Scale back the boxes to the original size.
+def sigmoid(x):
+    """Numpy-based sigmoid function."""
+    return 1 / (1 + np.exp(-x))
 
-#     Args:
-#         pred_logits (np.ndarray): (B x NQ x 4) logit values from TRT engine.
-#         pred_boxes (np.ndarray): (B x NQ x 4) bbox values from TRT engine.
-#         target_sizes (np.ndarray): (B x 4) [w, h, w, h] containing original image dimension.
-#         num_select (int): Top-K proposals to choose from.
+def post_process(pred_logits, pred_boxes, pos_maps, num_select=300):
+    """Perform the post-processing. Scale back the boxes to the original size.
 
-#     Returns:
-#         labels (np.ndarray): (B x NS) class label of top num_select predictions.
-#         scores (np.ndarray): (B x NS) class probability of top num_select predictions.
-#         boxes (np.ndarray):  (B x NS x 4) scaled back bounding boxes of top num_select predictions.
-#     """
-#     bs = pred_logits.shape[0]
-#     # Sigmoid
-#     # prob_to_token = sigmoid(pred_logits).reshape((bs, pred_logits.shape[1], -1))
-#     prob_to_token = sigmoid(pred_logits)
+    Args:
+        pred_logits (np.ndarray): (B x NQ x 4) logit values from TRT engine.
+        pred_boxes (np.ndarray): (B x NQ x 4) bbox values from TRT engine.
+        target_sizes (np.ndarray): (B x 4) [w, h, w, h] containing original image dimension.
+        num_select (int): Top-K proposals to choose from.
 
-#     for label_ind in range(len(pos_maps)):
-#         if pos_maps[label_ind].sum() != 0:
-#             pos_maps[label_ind] = pos_maps[label_ind] / pos_maps[label_ind].sum()
+    Returns:
+        labels (np.ndarray): (B x NS) class label of top num_select predictions.
+        scores (np.ndarray): (B x NS) class probability of top num_select predictions.
+        boxes (np.ndarray):  (B x NS x 4) scaled back bounding boxes of top num_select predictions.
+    """
+    bs = pred_logits.shape[0]
+    # Sigmoid
+    # prob_to_token = sigmoid(pred_logits).reshape((bs, pred_logits.shape[1], -1))
+    prob_to_token = sigmoid(pred_logits)
 
-#     prob_to_label = prob_to_token @ pos_maps.T
+    for label_ind in range(len(pos_maps)):
+        if pos_maps[label_ind].sum() != 0:
+            pos_maps[label_ind] = pos_maps[label_ind] / pos_maps[label_ind].sum()
 
-#     prob = prob_to_label
+    prob_to_label = prob_to_token @ pos_maps.T
 
-#     # Get topk scores
-#     topk_indices = np.argsort(prob.reshape((bs, -1)), axis=1)[:, ::-1][:, :num_select]
+    prob = prob_to_label
 
-#     scores = [per_batch_prob[ind] for per_batch_prob, ind in zip(prob.reshape((bs, -1)), topk_indices)]
-#     scores = np.array(scores)
+    # Get topk scores
+    topk_indices = np.argsort(prob.reshape((bs, -1)), axis=1)[:, ::-1][:, :num_select]
 
-#     # Get corresponding boxes
-#     topk_boxes = topk_indices // prob.shape[2]
-#     # Get corresponding labels
-#     labels = topk_indices % prob.shape[2]
+    scores = [per_batch_prob[ind] for per_batch_prob, ind in zip(prob.reshape((bs, -1)), topk_indices)]
+    scores = np.array(scores)
 
-#     # Convert to x1, y1, x2, y2 format
-#     boxes = box_cxcywh_to_xyxy(pred_boxes)
+    # Get corresponding boxes
+    topk_boxes = topk_indices // prob.shape[2]
+    # Get corresponding labels
+    labels = topk_indices % prob.shape[2]
 
-#     # Take corresponding topk boxes
-#     boxes = np.take_along_axis(boxes, np.repeat(np.expand_dims(topk_boxes, -1), 4, axis=-1), axis=1)
+    # Convert to x1, y1, x2, y2 format
+    # boxes = box_cxcywh_to_xyxy(pred_boxes)
+    boxes = pred_boxes
 
-#     # Scale back the bounding boxes to the original image size
-#     target_sizes = np.array(target_sizes)
-#     boxes = boxes * target_sizes[:, None, :]
+    # Take corresponding topk boxes
+    boxes = np.take_along_axis(boxes, np.repeat(np.expand_dims(topk_boxes, -1), 4, axis=-1), axis=1)
 
-#     # Clamp bounding box coordinates
-#     for i, target_size in enumerate(target_sizes):
-#         w, h = target_size[0], target_size[1]
-#         boxes[i, :, 0::2] = np.clip(boxes[i, :, 0::2], 0.0, w)
-#         boxes[i, :, 1::2] = np.clip(boxes[i, :, 1::2], 0.0, h)
+    # # Scale back the bounding boxes to the original image size
+    # target_sizes = np.array(target_sizes)
+    # boxes = boxes * target_sizes[:, None, :]
 
-#     return labels, scores, boxes
+    # # Clamp bounding box coordinates
+    # for i, target_size in enumerate(target_sizes):
+    #     w, h = target_size[0], target_size[1]
+    #     boxes[i, :, 0::2] = np.clip(boxes[i, :, 0::2], 0.0, w)
+    #     boxes[i, :, 1::2] = np.clip(boxes[i, :, 1::2], 0.0, h)
+
+    return labels, scores, boxes
 
 
 def generate_masks_with_special_tokens_and_transfer_map(tokenized, special_tokens_list):
@@ -181,9 +192,9 @@ def tokenize_captions(tokenizer, cat_list, caption, max_text_len=256):
         tokenized["token_type_ids"] = tokenized["token_type_ids"][:, : max_text_len]
 
     input_ids = tokenized["input_ids"].astype(int)
-    attention_mask = tokenized["attention_mask"].astype(int)
+    attention_mask = tokenized["attention_mask"].astype(bool)
     position_ids = position_ids.astype(int)
     token_type_ids = tokenized["token_type_ids"].astype(int)
-    text_self_attention_masks = text_self_attention_masks.astype(int)
+    text_self_attention_masks = text_self_attention_masks.astype(bool)
 
     return input_ids, attention_mask, position_ids, token_type_ids, text_self_attention_masks, pos_map

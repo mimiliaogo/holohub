@@ -28,7 +28,7 @@ from holoscan.operators import (
 )
 from holoscan.resources import UnboundedAllocator
 from transformers import AutoTokenizer
-from utils import tokenize_captions
+from utils import tokenize_captions, post_process
 
 coco_label_map = {
     0: "person",
@@ -119,24 +119,44 @@ class CaptionPreprocessorOp(Operator):
         super().__init__(*args, **kwargs)
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_model)
         self.max_text_len = max_text_len
-        self.cat_list = ['cat', 'dog']
+        self.cat_list = ['person', 'dog', 'cup']
         self.caption = [" . ".join(self.cat_list) + ' .'] 
 
     def setup(self, spec: OperatorSpec):
         # spec.input("captions")
         spec.output("out")
-
+        spec.output("pos_map")
+        
     def compute(self, op_input, op_output, context):
         # captions = op_input.receive("captions")
         input_ids, attention_mask, position_ids, token_type_ids, text_self_attention_masks, pos_map = tokenize_captions(self.tokenizer, self.cat_list, self.caption, self.max_text_len)
         
-        # op_output.emit(op_input["in", "source_video"])
-        op_output.emit(input_ids, "input_ids")
-        op_output.emit(attention_mask, "attention_mask")
-        op_output.emit(position_ids, "position_ids")
-        op_output.emit(token_type_ids, "token_type_ids")
-        op_output.emit(text_self_attention_masks, "text_self_attention_masks")
+        # Convert boolean masks to uint8 (0 and 1) while preserving the semantic meaning
+        attention_mask = cp.asarray(attention_mask).astype(cp.uint8)
+        text_self_attention_masks = cp.asarray(text_self_attention_masks).astype(cp.uint8)
         
+        # Ensure other tensors have appropriate types
+        input_ids = cp.asarray(input_ids).astype(cp.int64)
+        position_ids = cp.asarray(position_ids).astype(cp.int64)
+        token_type_ids = cp.asarray(token_type_ids).astype(cp.int64)
+        pos_map = cp.asarray(pos_map)
+        
+        
+        out_message = { 
+            "input_ids": input_ids,
+            "attention_mask": attention_mask,
+            "position_ids": position_ids,
+            "token_type_ids": token_type_ids,
+            "text_self_attention_masks": text_self_attention_masks,
+        }
+        # Print the type of each item in out_message, not just ndarray
+        for key, value in out_message.items():
+            print(f"{key}: {value.dtype}")
+        print("out_message of caption_preprocessor", out_message)
+        op_output.emit(pos_map, "pos_map")
+        op_output.emit(out_message, "out")
+        
+
 class DetectionPostprocessorOp(Operator):
     """Example of an operator post processing the tensor from inference component.
 
@@ -169,46 +189,88 @@ class DetectionPostprocessorOp(Operator):
 
     def setup(self, spec: OperatorSpec):
         spec.input("in")
-        spec.output("output_specs")
+        spec.input("pos_map")
+        # spec.output("output_specs")
         spec.output("outputs")
 
     def compute(self, op_input, op_output, context):
         # Get input message
         in_message = op_input.receive("in")
-        # Convert input to numpy array (using CuPy)
-        bboxes = cp.asarray(
-            in_message.get("inference_output_detection_boxes")
-        ).get()  # (nbatch, nboxes, ncoord)
-        scores = cp.asarray(
-            in_message.get("inference_output_detection_scores")
-        ).get()  # (nbatch, nboxes)
-        labels = cp.asarray(
-            in_message.get("inference_output_detection_classes")
-        ).get()  # (nbatch, nboxes)
+        pos_map = cp.asarray(op_input.receive("pos_map")).get()
 
-        ix = scores.flatten() > 0  # Find the bbox with score >0
-        if np.all(ix == False):
-            bboxes = np.zeros([1, 2, 2], dtype=np.float32)
-            labels = np.zeros([1, 1], dtype=np.float32)
-            bboxes_reshape = bboxes
-        else:
-            bboxes = bboxes[:, ix, :]  # (nbatch, nboxes, 4)
-            labels = labels[:, ix]
-            # Make box shape compatible with Holoviz
-            bboxes = bboxes / self.width  # The x, y need to be rescaled to [0,1]
-            bboxes_reshape = np.reshape(bboxes, (1, -1, 2))  # (nbatch, nboxes*2, ncoord/2)
+        pred_boxes = cp.asarray(
+            in_message.get("inference_output_pred_boxes")
+        ).get()  # (nbatch, nqueries, 4) --> (1, 900, 4)
+        
+        pred_logits = cp.asarray(
+            in_message.get("inference_output_pred_logits")
+        ).get()  # (nbatch, nqueries, 256) --> (1, 900, 256)
+        
 
-        bbox_label_text = [self.label_name_map[int(label)] for label in labels[0]]
+        print("pred_logits detailed stats:", {
+            "shape": pred_logits.shape,
+            "min": np.nanmin(pred_logits),  # Use nanmin to handle NaNs
+            "max": np.nanmax(pred_logits),
+            "mean": np.nanmean(pred_logits),
+            "num_nan": np.isnan(pred_logits).sum(),
+            "num_inf": np.isinf(pred_logits).sum(),
+            "num_large": (np.abs(pred_logits) > 1e6).sum()  # Check for very large values
+        })
 
-        # Prepare output
-        bbox_label = np.asarray([(b[0], b[1]) for b in bboxes[0]])  # Get the top-left coordinates
-        out_message = {"bbox_label": bbox_label, "bbox": bboxes_reshape}
+        # stats for pred_boxes
+        print("pred_boxes detailed stats:", {
+            "shape": pred_boxes.shape,
+            "value": pred_boxes,
+            "min": np.nanmin(pred_boxes),  # Use nanmin to handle NaNs
+            "max": np.nanmax(pred_boxes),
+            "mean": np.nanmean(pred_boxes),
+            "num_nan": np.isnan(pred_boxes).sum(),
+            "num_inf": np.isinf(pred_boxes).sum(),
+            "num_large": (np.abs(pred_boxes) > 1e6).sum()  # Check for very large values
+        })
+        
+        class_labels, scores, boxes = post_process(pred_logits, pred_boxes, pos_map)
+        # print("class_labels", class_labels[0])
+        # print("boxes", boxes[0])
+        # print("scores", scores[0])
+        
+        # # Convert input to numpy array (using CuPy)
+        # bboxes = cp.asarray(
+        #     in_message.get("inference_output_detection_boxes")
+        # ).get()  # (nbatch, nboxes, ncoord)
+        # scores = cp.asarray(
+        #     in_message.get("inference_output_detection_scores")
+        # ).get()  # (nbatch, nboxes)
+        # labels = cp.asarray(
+        #     in_message.get("inference_output_detection_classes")
+        # ).get()  # (nbatch, nboxes)
 
-        spec_label = HolovizOp.InputSpec("bbox_label", "text")
-        spec_label.text = bbox_label_text
+        # ix = scores.flatten() > 0  # Find the bbox with score >0
+        # if np.all(ix == False):
+        #     bboxes = np.zeros([1, 2, 2], dtype=np.float32)
+        #     labels = np.zeros([1, 1], dtype=np.float32)
+        #     bboxes_reshape = bboxes
+        # else:
+        #     bboxes = bboxes[:, ix, :]  # (nbatch, nboxes, 4)
+        #     labels = labels[:, ix]
+        #     # Make box shape compatible with Holoviz
+        #     bboxes = bboxes / self.width  # The x, y need to be rescaled to [0,1]
+        #     bboxes_reshape = np.reshape(bboxes, (1, -1, 2))  # (nbatch, nboxes*2, ncoord/2)
 
+        # bbox_label_text = [self.label_name_map[int(label)] for label in labels[0]]
+
+        # # Prepare output
+        # bbox_label = np.asarray([(b[0], b[1]) for b in bboxes[0]])  # Get the top-left coordinates
+        # out_message = {"bbox_label": bbox_label, "bbox": bboxes_reshape}
+
+        # spec_label = HolovizOp.InputSpec("bbox_label", "text")
+        # spec_label.text = bbox_label_text
+
+        # op_output.emit(out_message, "outputs")
+        # op_output.emit([spec_label], "output_specs")
+        # emit dummy value
+        out_message = {"bbox": []}
         op_output.emit(out_message, "outputs")
-        op_output.emit([spec_label], "output_specs")
 
 
 class YoloDetApp(Application):
@@ -278,7 +340,7 @@ class YoloDetApp(Application):
             self,
             name="caption_preprocessor",
             tokenizer_model='bert-base-uncased',
-            max_text_len=512,
+            max_text_len=256, # model 256
             **self.kwargs("caption_preprocessor"),
         )
 
@@ -305,13 +367,13 @@ class YoloDetApp(Application):
             name="detection_visualizer",
             tensors=[
                 dict(name="", type="color"),
-                dict(
-                    name="bbox",
-                    type="rectangles",
-                    opacity=0.5,
-                    line_width=4,
-                    color=[1.0, 0.0, 0.0, 1.0],
-                ),
+                # dict(
+                #     name="bbox",
+                #     type="rectangles",
+                #     opacity=0.5,
+                #     line_width=4,
+                #     color=[1.0, 0.0, 0.0, 1.0],
+                # ),
             ],
             **self.kwargs("detection_visualizer"),
         )
@@ -320,13 +382,15 @@ class YoloDetApp(Application):
         self.add_flow(source, detection_visualizer, {(source_output, "receivers")})
         self.add_flow(source, detection_preprocessor)
         self.add_flow(detection_preprocessor, detection_inference, {("", "receivers")})
-        self.add_flow(caption_preprocessor, detection_inference, {("", "receivers")})
-        self.add_flow(detection_inference, detection_postprocessor, {("transmitter", "")})
+        # self.add_flow(caption_preprocessor, detection_inference, {("input_ids", "receivers"), ("attention_mask", "receivers"), ("position_ids", "receivers"), ("token_type_ids", "receivers"), ("text_self_attention_masks", "receivers")})
+        self.add_flow(caption_preprocessor, detection_inference, {("out", "receivers")})
+        self.add_flow(caption_preprocessor, detection_postprocessor, {("pos_map", "pos_map")})
+        self.add_flow(detection_inference, detection_postprocessor, {("transmitter", "in")})
         # Connect the postprocessor to the visualizer
         self.add_flow(detection_postprocessor, detection_visualizer, {("outputs", "receivers")})
-        self.add_flow(
-            detection_postprocessor, detection_visualizer, {("output_specs", "input_specs")}
-        )
+        # self.add_flow(
+        #     detection_postprocessor, detection_visualizer, {("output_specs", "input_specs")}
+        # )
 
 
 if __name__ == "__main__":

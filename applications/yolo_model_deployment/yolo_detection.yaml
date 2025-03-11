@@ -29,8 +29,8 @@ v4l2_source:
 detection_preprocessor:  # FormatConverter
     out_tensor_name: source_video
     out_dtype: "float32"
-    resize_width: 640
-    resize_height: 640
+    resize_width: 544
+    resize_height: 960
 
 caption_preprocessor:
 
@@ -39,16 +39,16 @@ detection_inference:  # TensorRtInference
   pre_processor_map:
     "yolo_det": ["source_video",
                   "input_ids",
+                  "position_ids",
                   "attention_mask",
                   "token_type_ids",
                   "text_self_attention_masks"]
   inference_map:
-    "yolo_det": ["inference_output_num_detections",
-                 "inference_output_detection_boxes",
-                 "inference_output_detection_scores",
-                 "inference_output_detection_classes"]
+    "yolo_det": ["inference_output_pred_logits",
+                 "inference_output_pred_boxes"]
   model_path_map:
     "yolo_det": "grounding_dino_swin_tiny_commercial_deployable.onnx" # model file in data dir
+  enable_fp16: true
 
 detection_postprocessor:  # Postprocessor
   label_text_size: 0.04
