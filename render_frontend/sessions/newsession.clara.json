@@ -1,0 +1,189 @@
+{
+    "TransferFunction": {
+        "components": [
+            {
+                "activeRegions": [],
+                "diffuseEnd": {
+                    "x": 1,
+                    "y": 1,
+                    "z": 1
+                },
+                "diffuseStart": {
+                    "x": 1,
+                    "y": 1,
+                    "z": 1
+                },
+                "specularEnd": {
+                    "x": 1,
+                    "y": 1,
+                    "z": 1
+                },
+                "specularStart": {
+                    "x": 1,
+                    "y": 1,
+                    "z": 1
+                },
+                "emissiveEnd": {
+                    "x": 0,
+                    "y": 0,
+                    "z": 0
+                },
+                "emissiveStart": {
+                    "x": 0,
+                    "y": 0,
+                    "z": 0
+                },
+                "emissiveStrength": 0,
+                "opacity": 1,
+                "opacityProfile": "SQUARE",
+                "opacityTransition": 0.2,
+                "range": {
+                    "min": 0.0021808143547273897,
+                    "max": 0.7392132505175983
+                },
+                "roughness": 0
+            },
+            {
+                "activeRegions": [],
+                "diffuseEnd": {
+                    "x": 0.9490196078431372,
+                    "y": 0.043137254901960787,
+                    "z": 0.043137254901960787
+                },
+                "diffuseStart": {
+                    "x": 0.9490196078431372,
+                    "y": 0.043137254901960787,
+                    "z": 0.043137254901960787
+                },
+                "specularEnd": {
+                    "x": 1,
+                    "y": 1,
+                    "z": 1
+                },
+                "specularStart": {
+                    "x": 1,
+                    "y": 1,
+                    "z": 1
+                },
+                "emissiveEnd": {
+                    "x": 0,
+                    "y": 0,
+                    "z": 0
+                },
+                "emissiveStart": {
+                    "x": 0,
+                    "y": 0,
+                    "z": 0
+                },
+                "emissiveStrength": 0,
+                "opacity": 0.25,
+                "opacityProfile": "SQUARE",
+                "opacityTransition": 0.2,
+                "range": {
+                    "min": 0.7435748792270531,
+                    "max": 0.8133609385783298
+                },
+                "roughness": 0
+            }
+        ],
+        "densityScale": 1000,
+        "globalOpacity": 1,
+        "gradientScale": 10,
+        "shadingProfile": "HYBRID",
+        "blendingProfile": "MAXIMUM_OPACITY"
+    },
+    "VolumeCrop": {
+        "min": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+        },
+        "max": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+        }
+    },
+    "PostProcessTonemap": {
+        "enable": "SWITCH_ENABLE",
+        "exposure": 0.5
+    },
+    "PostProcessDenoise": {
+        "method": "OFF",
+        "radius": 1,
+        "spatialWeight": 0.05,
+        "depthWeight": 3,
+        "noiseThreshold": 0.2,
+        "enableIterationLimit": "SWITCH_DISABLE",
+        "iterationLimit": 40
+    },
+    "Light": [
+        {
+            "color": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+            },
+            "direction": {
+                "x": 0.04048821886283623,
+                "y": 0.9659258262890684,
+                "z": -0.25563255317172697
+            },
+            "position": {
+                "x": -0.04048821886283623,
+                "y": -0.9659258262890684,
+                "z": 0.25563255317172697
+            },
+            "intensity": 1,
+            "index": 0,
+            "enable": "SWITCH_ENABLE",
+            "show": "SWITCH_ENABLE",
+            "size": 1
+        }
+    ],
+    "BackgroundLight": {
+        "bottomColor": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+        },
+        "horizonColor": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+        },
+        "topColor": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+        },
+        "enable": "SWITCH_ENABLE",
+        "show": "SWITCH_ENABLE",
+        "intensity": 1
+    },
+    "Camera": {
+        "eye": {
+            "x": -0.1474154736426498,
+            "y": -0.004348861710256661,
+            "z": -0.3254671338009995
+        },
+        "lookAt": {
+            "x": 0.0020000108052045109,
+            "y": 0.002000003820285201,
+            "z": 0.0019999900832772257
+        },
+        "up": {
+            "x": 0.009100507931408072,
+            "y": 0.9996816158585684,
+            "z": -0.023533968425051414
+        },
+        "pixelAspectRatio": 1,
+        "fieldOfView": 55
+    },
+    "CameraAperture": {
+        "aperture": 0,
+        "autoFocus": "SWITCH_ENABLE",
+        "enable": "SWITCH_DISABLE",
+        "focusDistance": 1
+    }
+}

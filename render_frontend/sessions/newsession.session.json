@@ -1,0 +1,234 @@
+{
+    "dataset": {
+        "name": "pipeline_dataset",
+        "source": "datadir",
+        "lastModified": "2025-11-24T19:02:52"
+    },
+    "camera_settings": {
+        "width": 1558,
+        "height": 965,
+        "aperture": 0,
+        "fov": 55,
+        "focus": 1,
+        "autoFocus": true,
+        "eye": [
+            -0.1474154736426498,
+            -0.004348861710256661,
+            -0.3254671338009995
+        ],
+        "lookat": [
+            0.0020000108052045109,
+            0.002000003820285201,
+            0.0019999900832772257
+        ],
+        "up": [
+            0.009100507931408072,
+            0.9996816158585684,
+            -0.023533968425051414
+        ],
+        "stereo": false,
+        "flipY": true,
+        "eyeDistance": 0.0065
+    },
+    "post_process_settings": {
+        "outlierEnabled": true,
+        "outlierUpperThreshold": 10,
+        "outlierLowerThreshold": 0.3,
+        "outlierDepthThreshold": 0.2,
+        "tonemapEnabled": true,
+        "tonemapExposure": 0.5,
+        "denoiseEnabled": true,
+        "denoiseSpatialWeight": 0.05,
+        "denoiseDepthWeight": 3,
+        "denoiseLimitEnabled": false,
+        "denoiseIterationLimit": 40,
+        "denoiseWindowRadius": 1,
+        "denoiseNoiseThreshold": 0.2,
+        "denoiseDLEnabled": false
+    },
+    "light_settings": {
+        "backgroundlight": {
+            "topColor": [
+                0,
+                0,
+                0
+            ],
+            "middleColor": [
+                0,
+                0,
+                0
+            ],
+            "bottomColor": [
+                0,
+                0,
+                0
+            ],
+            "intensity": 1,
+            "enabled": true,
+            "castLight": true,
+            "show": true
+        },
+        "lights": [
+            {
+                "type": "Spot Light",
+                "enabled": true,
+                "show": true,
+                "azimuth": 9,
+                "zenith": 105,
+                "distance": 1,
+                "size": 1,
+                "intensity": 1,
+                "color": [
+                    255,
+                    255,
+                    255
+                ],
+                "name": "Area Light"
+            }
+        ]
+    },
+    "render_settings": {
+        "useRTX": true,
+        "usePrimaryRTX": true,
+        "useShadowRTX": false,
+        "useFoveation": false,
+        "useWarp": false,
+        "disableUnwarp": false,
+        "warpResolutionScale": 0.3,
+        "warpFullResolutionDiameter": 0.3,
+        "showFoveatedRegion": false,
+        "shadowRayStartOffset": 0.5,
+        "stepSize": 1,
+        "shadowStepSize": 1,
+        "gradientDistance": 2,
+        "diagnosticMode": "None",
+        "gradientMode": "Analytical",
+        "interpolationMode": "CatmullRom Spline",
+        "timeSlot": 16,
+        "maxIterations": 10000,
+        "fixedNumberIterations": false,
+        "numberIterations": 10,
+        "numberRefinements": 5,
+        "showPerformance": true,
+        "reproject": true
+    },
+    "volume_settings": {
+        "cropXStart": 0,
+        "cropXEnd": 1,
+        "cropYStart": 0,
+        "cropYEnd": 1,
+        "cropZStart": 0,
+        "cropZEnd": 1,
+        "scale": 1
+    },
+    "transfer_function_settings": {
+        "presets": [
+            {
+                "components": [
+                    {
+                        "name": "",
+                        "left": 0.0021808143547273897,
+                        "right": 0.7392132505175983,
+                        "transition": 0.2,
+                        "enabled": true,
+                        "opacityProfile": "Square",
+                        "opacity": 1,
+                        "roughness": 0,
+                        "shininess": 0,
+                        "emissive": 0,
+                        "diffuseStart": [
+                            255,
+                            255,
+                            255
+                        ],
+                        "diffuseEnd": [
+                            255,
+                            255,
+                            255
+                        ],
+                        "specularStart": [
+                            255,
+                            255,
+                            255
+                        ],
+                        "specularEnd": [
+                            255,
+                            255,
+                            255
+                        ],
+                        "emissiveStart": [
+                            0,
+                            0,
+                            0
+                        ],
+                        "emissiveEnd": [
+                            0,
+                            0,
+                            0
+                        ]
+                    },
+                    {
+                        "name": "New Component 1",
+                        "left": 0.7435748792270531,
+                        "right": 0.8133609385783298,
+                        "transition": 0.2,
+                        "enabled": true,
+                        "opacityProfile": "Square",
+                        "opacity": 0.25,
+                        "roughness": 0,
+                        "shininess": 0,
+                        "emissive": 0,
+                        "diffuseStart": [
+                            242,
+                            11,
+                            11
+                        ],
+                        "diffuseEnd": [
+                            242,
+                            11,
+                            11
+                        ],
+                        "specularStart": [
+                            255,
+                            255,
+                            255
+                        ],
+                        "specularEnd": [
+                            255,
+                            255,
+                            255
+                        ],
+                        "emissiveStart": [
+                            0,
+                            0,
+                            0
+                        ],
+                        "emissiveEnd": [
+                            0,
+                            0,
+                            0
+                        ]
+                    }
+                ],
+                "enabled": true,
+                "name": "Default Preset",
+                "activeRegions": []
+            }
+        ],
+        "settings": {
+            "shadingProfile": "Hybrid",
+            "blendingProfile": "Maximum Opacity",
+            "globalOpacity": 1,
+            "numSamples": 256,
+            "densityFactor": 1000,
+            "densityRangeMin": 0,
+            "densityRangeMax": 65535,
+            "densityRangeEnabled": false,
+            "gradientFactor": 10,
+            "gradientRangeMin": 0,
+            "gradientRangeMax": 1,
+            "gradientRangeEnabled": false
+        },
+        "hiddenLabels": []
+    }
+}

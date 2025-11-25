@@ -94,14 +94,49 @@ void Dataset::SetVolume(Types type, const std::array<float, 3>& spacing,
   data_array.flip_axes_ = {flip_axes[0], flip_axes[1], flip_axes[2]};
   data_array.element_range_ = element_range;
 
+  
+  holoscan::log_info("Element range: min={}, max={}", element_range[0](0), element_range[0](1));
+
   int32_t frames = 1;
   if (shape.rank() == 4) { frames = shape.dimension(0); }
+  
+  holoscan::log_info("Tensor info: rank={}, element_type={}, bytes_per_element={}, frames={}", 
+                     shape.rank(), static_cast<int>(tensor->element_type()), 
+                     tensor->bytes_per_element(), frames);
+  holoscan::log_info("Volume dimensions: {}x{}x{}", data_array.dims_(0), data_array.dims_(1), data_array.dims_(2));
 
   // copy the data
   const size_t volume_size =
       tensor->bytes_per_element() * data_array.dims_(0) * data_array.dims_(1) * data_array.dims_(2);
   uintptr_t volume_data = reinterpret_cast<uintptr_t>(tensor->pointer());
   for (uint32_t frame = 0; frame < frames; ++frame) {
+    // FIXME(mimil): log volume data metadata
+    // shape, min/max
+    void* data_ptr = reinterpret_cast<void*>(volume_data); // volume data 
+    
+    if (tensor->storage_type() == nvidia::gxf::MemoryStorageType::kDevice) {
+      const size_t num_elements = volume_size / tensor->bytes_per_element();
+      holoscan::log_info("Debug: volume_size={}, bytes_per_element={}, num_elements={}", 
+                         volume_size, tensor->bytes_per_element(), num_elements);
+      holoscan::log_info("Debug: data_ptr={}, volume_data={}", data_ptr, reinterpret_cast<void*>(volume_data));
+      
+      
+      std::vector<float> host_data(num_elements);
+      cudaError_t err = cudaMemcpy(host_data.data(), data_ptr, volume_size, cudaMemcpyDeviceToHost);
+      if (err != cudaSuccess) {
+        holoscan::log_error("cudaMemcpy failed: {}", cudaGetErrorString(err));
+      }
+      
+      auto [min_it, max_it] = std::minmax_element(host_data.begin(), host_data.end());
+      
+      size_t median_idx = num_elements / 2;
+      std::nth_element(host_data.begin(), host_data.begin() + median_idx, host_data.end());
+      float median_value = host_data[median_idx];
+      
+      holoscan::log_info("frame {}: Volume data (float32) min/max/median: [{}, {}, {}]", frame, *min_it, *max_it, median_value);
+    }
+    
+    
     DataArray::Handle cur_data_array(new DataArray);
     *cur_data_array = data_array;
 
@@ -231,6 +266,7 @@ void Dataset::Configure(clara::viz::DataConfigInterface& data_config_interface) 
 
 void Dataset::Set(clara::viz::DataInterface& data_interface, uint32_t frame_index) {
   {
+    holoscan::log_info("Setting density frame {}", frame_index);
     clara::viz::DataInterface::AccessGuard access(data_interface);
     if (!density_.empty()) {
       if (frame_index > density_.size()) {

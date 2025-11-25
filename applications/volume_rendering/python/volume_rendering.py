@@ -129,6 +129,7 @@ class VolumeRenderingApp(Application):
             self,
             name="volume_renderer",
             config_file=self._rendering_config,
+            write_config_file=self._write_config_file,
             allocator=volume_allocator,
             alloc_width=1024,
             alloc_height=768,
@@ -182,23 +183,27 @@ class VolumeRenderingApp(Application):
         self.add_flow(visualizer, volume_renderer, {("camera_pose_output", "camera_pose")})
 
 
-def valid_existing_path(path: str) -> pathlib.Path:
-    """Helper type checking and type converting method for ArgumentParser.add_argument
-    to convert string input to pathlib.Path if the given file/folder path exists.
-
-    Args:
-        path: string input path
-
-    Returns:
-        If path exists, return absolute path as a pathlib.Path object.
-
-        If path doesn't exist, raises argparse.ArgumentTypeError.
-    """
+def valid_existing_file(path: str) -> pathlib.Path:
+    """Validate that a path exists and is a regular file, return absolute Path."""
     path = os.path.expanduser(path)
     file_path = pathlib.Path(path).absolute()
-    if file_path.exists():
-        return file_path
-    raise argparse.ArgumentTypeError(f"No such file/folder: '{file_path}'")
+    if not file_path.exists():
+        raise argparse.ArgumentTypeError(f"No such file: '{file_path}'")
+    if not file_path.is_file():
+        raise argparse.ArgumentTypeError(f"Not a file: '{file_path}'")
+    return file_path
+
+
+def valid_writable_file(path: str) -> pathlib.Path:
+    """Validate that the parent directory exists; file may or may not exist."""
+    path = os.path.expanduser(path)
+    file_path = pathlib.Path(path).absolute()
+    parent = file_path.parent
+    if not parent.exists():
+        raise argparse.ArgumentTypeError(f"Parent directory does not exist: '{parent}'")
+    if not parent.is_dir():
+        raise argparse.ArgumentTypeError(f"Parent path is not a directory: '{parent}'")
+    return file_path
 
 
 def main():
@@ -218,7 +223,7 @@ def main():
         "--config",
         action="store",
         default=render_config_file_default,
-        type=valid_existing_path,
+        type=valid_existing_file,
         dest="config",
         help=f"Name of the renderer JSON configuration file to load (default {render_config_file_default})",
     )
@@ -226,7 +231,7 @@ def main():
         "-p",
         "--preset",
         action="append",
-        type=valid_existing_path,
+        type=valid_existing_file,
         dest="render_preset_files",
         help="Name of the renderer JSON preset file to load. This will be merged into the settings"
         "loaded from the configuration file. Multiple presets can be specified.",
@@ -235,7 +240,7 @@ def main():
         "-w",
         "--write_config",
         action="store",
-        type=pathlib.Path,
+        type=valid_writable_file,
         dest="write_config_file",
         help="Name of the renderer JSON configuration file to write to (default '')",
     )
@@ -244,7 +249,7 @@ def main():
         "--density",
         action="store",
         default=argparse.SUPPRESS,
-        type=valid_existing_path,
+        type=valid_existing_file,
         dest="density",
         help=f"Name of density volume file to load (default {density_volume_file_default})",
     )
@@ -273,7 +278,7 @@ def main():
         "--mask",
         action="store",
         default=argparse.SUPPRESS,
-        type=valid_existing_path,
+        type=valid_existing_file,
         dest="mask",
         help=f"Name of mask volume file to load (default {mask_volume_file_default})",
     )
@@ -290,12 +295,14 @@ def main():
         args.density = density_volume_file_default
         args.mask = mask_volume_file_default
 
+    print(f"[MIMIMI]: Writing config file to {args.write_config_file}")
+
     app = VolumeRenderingApp(
         render_config_file=str(args.config),
         render_preset_files=(
             map(lambda x: str(x), args.render_preset_files) if args.render_preset_files else None
         ),
-        write_config_file=str(args.write_config_file),
+        write_config_file=(str(args.write_config_file) if args.write_config_file else ""),
         density_volume_file=str(args.density),
         density_min=args.density_min,
         density_max=args.density_max,
@@ -306,7 +313,7 @@ def main():
     try:
         app.run()
     except Exception as e:
-        logger.error("Error:", str(e))
+        logger.exception("Error: %s", e)
 
 
 if __name__ == "__main__":

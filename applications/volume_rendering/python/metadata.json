@@ -1,6 +1,6 @@
 {
 	"application": {
-		"name": "Volume rendering using ClaraViz",
+		"name": "BCI Visualization with ClaraViz",
 		"authors": [
 			{
 				"name": "Holoscan Team",
@@ -29,7 +29,7 @@
 		"ranking": 1,
 		"requirements": {},
 		"run": {
-			"command": "python3 volume_rendering.py",
+			"command": "python3 volume_rendering.py --density <holohub_data_dir>/volume_rendering/filtered_activation_volume_normalized.nii.gz --config <holohub_data_dir>/volume_rendering/new_config.json --density_min -1024 --density_max 3071",
 			"workdir": "holohub_app_source"
 		}
 	}

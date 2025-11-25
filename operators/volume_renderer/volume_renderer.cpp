@@ -293,8 +293,15 @@ bool VolumeRendererOp::Impl::receive_volume(InputContext& input, Dataset::Types 
   auto flip_axes_input = input.receive<std::array<bool, 3>>((name + "_flip_axes").c_str());
 
   if (volume) {
-    nvidia::gxf::Handle<nvidia::gxf::Tensor> volume_tensor =
-        static_cast<nvidia::gxf::Entity>(volume.value()).get<nvidia::gxf::Tensor>("volume").value();
+    // nvidia::gxf::Handle<nvidia::gxf::Tensor> volume_tensor =
+    // static_cast<nvidia::gxf::Entity>(volume.value()).get<nvidia::gxf::Tensor>("volume").value();
+    
+    auto maybe_tensor = static_cast<nvidia::gxf::Entity>(volume.value()).get<nvidia::gxf::Tensor>("volume");
+    if (!maybe_tensor) {
+      throw std::runtime_error("VolumeRendererOp: No volume tensor found");
+    }
+    
+    nvidia::gxf::Handle<nvidia::gxf::Tensor> volume_tensor = maybe_tensor.value();
 
     std::array<float, 3> spacing{1.f, 1.f, 1.f};
     std::array<uint32_t, 3> permute_axis{0, 1, 2};
@@ -303,6 +310,11 @@ bool VolumeRendererOp::Impl::receive_volume(InputContext& input, Dataset::Types 
     if (spacing_input) { spacing = *spacing_input; }
     if (permute_axis_input) { permute_axis = *permute_axis_input; }
     if (flip_axes_input) { flip_axes = *flip_axes_input; }
+
+    // TODO(Mimi): log spacing, permute_axis, flip_axes
+    holoscan::log_info("receive_volume: spacing={}, permute_axis={}, flip_axes={}", spacing[0], permute_axis[0], flip_axes[0]);
+    holoscan::log_info("receive_volume: spacing={}, permute_axis={}, flip_axes={}", spacing[1], permute_axis[1], flip_axes[1]);
+    holoscan::log_info("receive_volume: spacing={}, permute_axis={}, flip_axes={}", spacing[2], permute_axis[2], flip_axes[2]);
 
     std::vector<clara::viz::Vector2f> element_range;
 
@@ -319,8 +331,8 @@ bool VolumeRendererOp::Impl::receive_volume(InputContext& input, Dataset::Types 
         has_range = true;
       }
       if (has_range) { element_range.push_back(range); }
+      holoscan::log_info("receive_volume: has range: {}", has_range);
     }
-
     dataset_.SetVolume(type, spacing, permute_axis, flip_axes, element_range, volume_tensor);
 
     return true;
@@ -545,7 +557,11 @@ void VolumeRendererOp::compute(InputContext& input, OutputContext& output,
     // the volume is defined, if the config file is empty we can deduce settings now
     if (impl_->config_file_.get().empty()) {
       impl_->json_interface_->DeduceSettings(clara::viz::ViewMode::CINEMATIC);
+      std::cout << "[MIMIMI]: Settings deduced" << std::endl;
     }
+
+    // TODO(mimil): fix bugs - write_config_file is empty despite being set
+    std::cout << "[MIMIMI]: Write config file: " << impl_->write_config_file_.get() << std::endl;
 
     if (!impl_->write_config_file_.get().empty()) {
       // get the settings and write to file
@@ -555,6 +571,7 @@ void VolumeRendererOp::compute(InputContext& input, OutputContext& output,
         throw std::runtime_error("Could not open configuration for writing");
       }
       output_file_stream << settings;
+      std::cout << "[MIMIMI]: Settings written to " << impl_->write_config_file_.get() << std::endl;
     }
 
     {

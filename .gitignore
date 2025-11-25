@@ -61,3 +61,11 @@ rti_license.dat
 # Holoscan streaming client and server binaries and libraries
 **/holoscan_client_cloud_streaming/
 **/holoscan_server_cloud_streaming/
+
+# Cursor
+.cursor-server/
+.cursor/
+openxr/
+*.nii.gz
+*.ssh
+*.

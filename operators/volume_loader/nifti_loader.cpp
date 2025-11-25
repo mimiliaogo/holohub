@@ -123,6 +123,8 @@ bool load_nifty(const std::string& file_name, Volume& volume) {
       to_millimeter = 0.001f;
       break;
   }
+  
+  
   volume.spacing_ = {float(image->dx) * to_millimeter,
                      float(image->dy) * to_millimeter,
                      float(image->dz) * to_millimeter};
@@ -160,6 +162,7 @@ bool load_nifty(const std::string& file_name, Volume& volume) {
     return false;
   }
 
+
   // copy the data
   switch (volume.storage_type_) {
     case nvidia::gxf::MemoryStorageType::kDevice:
@@ -181,6 +184,7 @@ bool load_nifty(const std::string& file_name, Volume& volume) {
       holoscan::log_error("NIFTI unhandled storage type {}", int(volume.storage_type_));
       return false;
   }
+
 
   return true;
 }

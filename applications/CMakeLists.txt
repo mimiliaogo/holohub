@@ -153,3 +153,6 @@ add_subdirectory(nvidia_nim)
 add_subdirectory(ehr_query_llm)
 add_subdirectory(slang)
 add_subdirectory(video_streaming)
+
+add_holohub_application(bci_visualization DEPENDS
+                        OPERATORS volume_loader volume_renderer)
